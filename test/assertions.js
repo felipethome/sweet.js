@@ -1,4 +1,5 @@
-import { parse, compile } from "../src/sweet";
+import { parse } from "../src/sweet";
+import compile, { load, SweetLoader } from '../src/sweet-loader';
 import expect from "expect.js";
 import { zip, curry, equals, cond, identity, T, and, compose, type, mapObjIndexed, map, keys, has } from 'ramda';
 import { transform } from 'babel-core';
@@ -57,20 +58,36 @@ export function testParse(code, acc, expectedAst, loader = {}) {
   });
 }
 
-export function testEval(source, expectedOutput, loader) {
-  let result = compile(source, {
-    cwd: '.',
-    transform,
-    moduleResolver: x => x,
-    moduleLoader: path => loader[path],
-    includeImports: false
-  });
-  var output;
-  eval(result.code);
-  expect(output).to.eql(expectedOutput);
+// export function testEval(source, expectedOutput, loader) {
+//   let result = compile(source, {
+//     cwd: '.',
+//     transform,
+//     moduleResolver: x => x,
+//     moduleLoader: path => loader[path],
+//     includeImports: false
+//   });
+//   var output;
+//   eval(result.code);
+//   expect(output).to.eql(expectedOutput);
+// }
+
+export function testEval(source, cb) {
+  let store = new Map();
+  store.set('entry.js', source);
+  return compile('entry.js', store).then(mod => {
+    var output;
+    try {
+      eval(mod.codegen());
+    } catch (e) {
+    throw new Error(`Syntax error: ${e.message}
+
+${source}`);
+    }
+    return output;
+  }).then(cb);
 }
 
 
 export function testThrow(source) {
-  expect(() => compile(source, { cwd: '.', transform})).to.throwError();
+  // expect(() => compile(source, { cwd: '.', transform})).to.throwError();
 }
